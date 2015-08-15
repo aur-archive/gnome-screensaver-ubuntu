@@ -1,0 +1,71 @@
+# Maintainer: Charles Bos <charlesbos1 AT gmail>
+# Contributor: Xiao-Long Chen <chenxiaolong@cxl.epac.to>
+# Contributor: Jan Alexander Steffens (heftig) <jan.steffens@gmail.com>
+# Contributor: Jan de Groot <jgc@archlinux.org>
+
+pkgname=gnome-screensaver-ubuntu
+pkgver=3.6.1
+_ubuntu_rel=0ubuntu13
+pkgrel=2
+pkgdesc="Screensaver designed to integrate well with the GNOME desktop."
+arch=('i686' 'x86_64')
+license=('GPL')
+url="http://live.gnome.org/GnomeScreensaver"
+backup=('etc/pam.d/gnome-screensaver')
+depends=('dbus-glib' 'libgnomekbd' 'gnome-desktop' 'gsettings-desktop-schemas' 'libsystemd')
+makedepends=('pkgconfig' 'intltool' 'libxss' 'gnome-common')
+provides=("gnome-screensaver=${pkgver}")
+conflicts=('gnome-screensaver')
+groups=('gnome')
+options=('!emptydirs')
+install=gnome-screensaver.install
+source=("http://ftp.gnome.org/pub/GNOME/sources/gnome-screensaver/${pkgver%.*}/gnome-screensaver-${pkgver}.tar.xz"
+        "https://launchpad.net/ubuntu/+archive/primary/+files/gnome-screensaver_${pkgver}-${_ubuntu_rel}.debian.tar.gz"
+        'gnome-screensaver.pam')
+sha512sums=('daa140c9608859c9291966931deedad50c94dd861916601022cd508f367cdac5db68ea1abb750bbef575d19b8690617900fee9859b880b1466267fd1cbee150f'
+            'ea209105b78bca29e3f5c44e8acee5654a60358e246078c25375c6d91f31997fc8865157915a46e85924cc55fe95bd4824c727500a054fdb348f185bce4cadc6'
+            'aed0933feed70a9b16da80d6e4716641cd45d2fd3fadbace3dfeb02b1a07124ee659f470277f8ce93492c6f7cf3cc9996bc60598724eea1955975604ff8f324d')
+
+prepare() {
+  cd "${srcdir}/gnome-screensaver-${pkgver}"
+
+  # Apply Ubuntu's patches
+
+  # Disable patches
+  sed -i '/32_input_sources_switcher.patch/d' "${srcdir}/debian/patches/series"
+
+  for i in $(grep -v '#' "${srcdir}/debian/patches/series"); do
+    patch -p1 -i "${srcdir}/debian/patches/${i}"
+  done
+
+  sed -i 's/AM_CONFIG_HEADER/AC_CONFIG_HEADERS/g' configure.ac
+}
+
+build() {
+  cd "${srcdir}/gnome-screensaver-${pkgver}"
+
+  autoreconf -vfi
+
+  ./configure \
+    --prefix=/usr \
+    --sysconfdir=/etc \
+    --libexecdir=/usr/lib/gnome-screensaver \
+    --localstatedir=/var \
+    --with-mit-ext \
+    --with-systemd \
+    --enable-locking # From debian/rules
+
+  make
+}
+
+package() {
+  cd "${srcdir}/gnome-screensaver-${pkgver}"
+
+  make DESTDIR="${pkgdir}" install
+  #install -Dm644 ../gnome-screensaver.pam "${pkgdir}/etc/pam.d/gnome-screensaver"
+
+  # Use language packs
+  rm -r "${pkgdir}/usr/share/locale/"
+}
+
+# vim:set ts=2 sw=2 et:
